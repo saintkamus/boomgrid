@@ -1,0 +1,9 @@
+{
+  "name": "boomgrid-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BOOMGRID game + room-code relay for online battle (zero dependencies)",
+  "main": "relay.js",
+  "scripts": { "start": "node relay.js" },
+  "engines": { "node": ">=18" }
+}
