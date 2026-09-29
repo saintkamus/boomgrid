@@ -2,23 +2,79 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07060d">
 <title>BOOMGRID - Demolition Arena</title>
 <style>
-  html,body{margin:0;height:100%;background:#07060d;overflow:hidden;-webkit-user-select:none;user-select:none}
-  body{display:flex;align-items:center;justify-content:center;
+  html,body{margin:0;height:100%;background:#07060d;overflow:hidden;-webkit-user-select:none;user-select:none;
+    touch-action:none;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  body{position:fixed;inset:0;height:auto;display:flex;align-items:center;justify-content:center;
     background:radial-gradient(ellipse at center,#1a1030 0%,#07060d 70%)}
+  body.tt #dsbtn{display:none!important}
+  body.tport{align-items:flex-start;padding-top:env(safe-area-inset-top,0px);box-sizing:border-box}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;outline:none;box-shadow:0 0 60px #000}
   #dsbtn{position:fixed;right:8px;bottom:8px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;
     color:#cbd;background:#1b1530cc;border:1px solid #4a3d7a;border-radius:6px;padding:7px 10px;cursor:pointer;
     letter-spacing:.05em;z-index:5;display:none}
   #dsbtn:hover{background:#2a2050;color:#fff}
   #dsbtn.on{border-color:#3fd07a;color:#8ff0b5}
+
+  /* ---------- touch controls (shown after the first touch; see src/17_touch.js) ---------- */
+  #tui{position:fixed;inset:0;z-index:6;pointer-events:none;display:none;--ts:1;
+    --sl:max(16px,env(safe-area-inset-left,0px));--sr:max(16px,env(safe-area-inset-right,0px));
+    --bm:max(16px,env(safe-area-inset-bottom,0px));--bs:calc(clamp(72px,21vmin,118px)*var(--ts));
+    --ptop:max(10px,env(safe-area-inset-top,0px));
+    font:700 clamp(11px,3.1vmin,15px)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em}
+  #tui.show{display:block}
+  @media (orientation:portrait){#tui{--bm:max(22px,env(safe-area-inset-bottom,0px),4.5vh)}}
+  .tbtn{position:absolute;display:none;align-items:center;justify-content:center;border-radius:50%;box-sizing:border-box;
+    color:#fff;background:rgba(26,18,48,.5);border:3px solid rgba(255,150,60,.8);text-shadow:0 1px 0 #000;
+    box-shadow:0 0 0 2px rgba(0,0,0,.4) inset,0 4px 14px rgba(0,0,0,.55);transition:transform .05s,background .05s}
+  .tbtn.down{transform:scale(.92);background:rgba(255,150,60,.55)}
+  #tui.play #tb-bomb,#tui.play #tb-act,#tui.play #tb-pause,#tui.menu #tb-bomb,#tui.menu #tb-act{display:flex}
+  #tui.menu #tb-fs.can{display:flex}
+  #tb-bomb{width:var(--bs);height:var(--bs);right:var(--sr);bottom:var(--bm);border-color:rgba(255,120,50,.9)}
+  #tb-act{width:calc(var(--bs)*.76);height:calc(var(--bs)*.76);right:calc(var(--sr) + var(--bs)*1.04);bottom:calc(var(--bm) + var(--bs)*.5);border-color:rgba(120,200,255,.85)}
+  #tui.menu #tb-act{border-color:rgba(200,190,255,.85)}
+  #tb-pause,#tb-fs{width:calc(clamp(40px,11vmin,58px)*var(--ts));height:calc(clamp(40px,11vmin,58px)*var(--ts));right:var(--sr);top:var(--ptop);border-color:rgba(200,190,255,.7);font-size:clamp(10px,2.6vmin,13px)}
+  /* floating stick */
+  #ts-base,#ts-knob{position:absolute;display:none;border-radius:50%;box-sizing:border-box;transform:translate(-50%,-50%);left:0;top:0}
+  #ts-base{width:calc(var(--R,50px)*2.3);height:calc(var(--R,50px)*2.3);border:3px solid rgba(255,255,255,.4);background:rgba(20,14,40,.35)}
+  #ts-knob{width:calc(var(--R,50px)*1.1);height:calc(var(--R,50px)*1.1);background:rgba(255,150,60,.75);border:3px solid rgba(255,220,160,.9)}
+  #tui.play.stick #ts-base,#tui.play.stick #ts-knob{display:block}
+  #tui.play.stick #ts-base.idle{opacity:.3}#tui.play.stick #ts-knob.idle{opacity:.35}
+  /* d-pad (menus always, gameplay when chosen in OPTIONS) */
+  #td{position:absolute;display:none;left:var(--sl);bottom:var(--bm);width:calc(clamp(122px,36vmin,200px)*var(--ts));aspect-ratio:1;
+    grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:3px}
+  #tui.menu #td,#tui.play.dpad #td{display:grid}
+  #td i{background:rgba(26,18,48,.5);border:3px solid rgba(255,255,255,.35);border-radius:10px;box-sizing:border-box;position:relative}
+  #td i.on{background:rgba(255,150,60,.6);border-color:rgba(255,220,160,.95)}
+  #td i:after{content:"";position:absolute;left:50%;top:50%;border:solid transparent;transform:translate(-50%,-50%)}
+  #td .u{grid-area:1/2}#td .l{grid-area:2/1}#td .r{grid-area:2/3}#td .d{grid-area:3/2}
+  #td .u:after{border-width:0 .55em .9em;border-bottom-color:#fff}#td .d:after{border-width:.9em .55em 0;border-top-color:#fff}
+  #td .l:after{border-width:.55em .9em .55em 0;border-right-color:#fff}#td .r:after{border-width:.55em 0 .55em .9em;border-left-color:#fff}
+  #td{font-size:calc(var(--bs)*.16)}
+  #tui.kb #td,#tui.kb #tb-bomb,#tui.kb #tb-act,#tui.kb #tb-fs,#tui.kb #trot{display:none!important}
+  #trot{position:absolute;left:50%;transform:translateX(-50%);display:none;max-width:86vw;text-align:center;color:#c8b8ff;
+    background:rgba(20,12,42,.75);border:1px solid rgba(120,100,200,.6);border-radius:8px;padding:8px 12px;font-size:clamp(10px,3vmin,13px)}
+  #tui.menu.port #trot.can{display:block}
 </style>
 </head>
 <body>
 <canvas id="c" tabindex="0"></canvas>
 <button id="dsbtn" title="Link a PS5 DualSense over WebHID for adaptive triggers, lightbar and haptics">LINK DUALSENSE</button>
+<div id="tui">
+  <div id="ts-base" class="idle"></div><div id="ts-knob" class="idle"></div>
+  <div id="td"><i class="u"></i><i class="l"></i><i class="r"></i><i class="d"></i></div>
+  <div id="tb-act" class="tbtn"><span>ACT</span></div>
+  <div id="tb-bomb" class="tbtn"><span>BOMB</span></div>
+  <div id="tb-pause" class="tbtn"><span>II</span></div>
+  <div id="tb-fs" class="tbtn"><span>FULL</span></div>
+  <div id="trot" class="can">TURN YOUR PHONE SIDEWAYS FOR A BIGGER PICTURE</div>
+</div>
 <script>
 
 // ==================== 00_core.js ====================
@@ -67,7 +123,7 @@ function hsl(h, s, l) { // h 0..360
 }
 
 // ---------- persistent settings / scores ----------
-const SET = { music: 0.6, sfx: 0.8, shake: 1, crt: 1, scaling: 0, rumble: 1, preview: 1, haptics: 1, trigfx: 1, diff: 1, hi: [], unlocked: 0, pname: 'PLAYER', relay: '', p2p: 1 };
+const SET = { music: 0.6, sfx: 0.8, shake: 1, crt: 1, scaling: 0, rumble: 1, preview: 1, haptics: 1, trigfx: 1, diff: 1, hi: [], unlocked: 0, pname: 'PLAYER', relay: '', p2p: 1, tpad: 0, tsize: 1 };
 function loadSettings() {
   try { const s = JSON.parse(localStorage.getItem('boomgrid_v1') || 'null'); if (s) Object.assign(SET, s); } catch (e) { }
 }
@@ -99,8 +155,11 @@ function resize() {
   vigCanvas = document.createElement('canvas'); vigCanvas.width = 64; vigCanvas.height = 48;
   const vx = vigCanvas.getContext('2d'); const gr = vx.createRadialGradient(32, 24, 14, 32, 24, 44);
   gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.45)'); vx.fillStyle = gr; vx.fillRect(0, 0, 64, 48);
+  if (typeof touchResize === 'function') touchResize();
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 function present() {
   dctx.imageSmoothingEnabled = false;
   dctx.drawImage(buf, 0, 0, disp.width, disp.height);
@@ -287,13 +346,14 @@ window.addEventListener('keydown', e => {
   if (typeof auInit === 'function') { auInit(); auResume(); }
   if (TEXTIN.active) { textKey(e); return; }
   if (!e.repeat) { KP[e.code] = true; anyKeyPressed = true; }
-  K[e.code] = true;
+  K[e.code] = true; if (TOUCH.on && e.isTrusted) TOUCH.on = false;
   if (BLOCK_KEYS.has(e.code) && !(e.target && e.target.id === 'dsbtn')) e.preventDefault();
   if (e.altKey && e.code === 'Enter') toggleFullscreen();
 }, { passive: false });
 window.addEventListener('keyup', e => { K[e.code] = false; });
 window.addEventListener('blur', () => { for (const k in K) K[k] = false; });
 window.addEventListener('pointerdown', () => { mouseClicked = true; if (typeof auInit === 'function') { auInit(); auResume(); } });
+for (const ev of ['pointerup', 'touchend', 'click']) window.addEventListener(ev, () => { if (typeof auInit === 'function') { auInit(); auResume(); } }, { passive: true });
 function toggleFullscreen() {
   try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { }
 }
@@ -321,6 +381,7 @@ const DEV = {
   pad1: makeDev('pad1', 'PAD 2', 'pad', { n: 1 }),
   pad2: makeDev('pad2', 'PAD 3', 'pad', { n: 2 }),
   pad3: makeDev('pad3', 'PAD 4', 'pad', { n: 3 }),
+  touch: makeDev('touch', 'TOUCH', 'touch'),   // on-screen controls, fed by src/17_touch.js
 };
 const ALLDEVS = Object.values(DEV);
 let PADS = [];           // connected gamepads (Gamepad API objects), sorted by index
@@ -334,6 +395,9 @@ function pollDevice(dev, gp) {
     dev.u = anyK(ks.u); dev.d = anyK(ks.d); dev.l = anyK(ks.l); dev.r = anyK(ks.r);
     dev.bomb = anyK(ks.bomb); dev.act = anyK(ks.act); dev.start = anyK(ks.start);
     dev.connected = true;
+  } else if (dev.kind === 'touch') {
+    const t = touchPoll();
+    dev.u = t.u; dev.d = t.d; dev.l = t.l; dev.r = t.r; dev.bomb = t.bomb; dev.act = t.act; dev.start = t.start; dev.connected = true;
   } else {
     if (!gp) { dev.connected = false; dev.u = dev.d = dev.l = dev.r = dev.bomb = dev.act = dev.start = 0; dev.gp = null; dev.r2 = dev.l2 = 0; dev.r2on = dev.l2on = false; }
     else {
@@ -377,6 +441,8 @@ function updateNav(dt) {
     if (d.gp && d.gp.buttons.some(b => b && b.pressed)) anyPad = true;
     if (d.gp && Math.abs(d.gp.axes[0] || 0) > 0.6) anyPad = true;
   }
+  { const t = DEV.touch; if (TOUCH.on) { if (t.u) raw.u = 1; if (t.d) raw.d = 1; if (t.l) raw.l = 1; if (t.r) raw.r = 1; if (t.bomb) ok = true; if (t.act) back = true; } }
+  if (anyPad && TOUCH.on) TOUCH.on = false;      // someone picked up a real controller
   NAV.u = NAV.d = NAV.l = NAV.r = 0;
   for (const k of ['u', 'd', 'l', 'r']) {
     if (raw[k]) {
@@ -408,6 +474,7 @@ const SLOT_OPTIONS = [
   { id: 'pad1', label: 'PAD 2', dev: 'pad1' },
   { id: 'pad2', label: 'PAD 3', dev: 'pad2' },
   { id: 'pad3', label: 'PAD 4', dev: 'pad3' },
+  { id: 'touch', label: 'TOUCH', dev: 'touch' },
   { id: 'cpu0', label: 'CPU EASY', bot: 0 },
   { id: 'cpu1', label: 'CPU NORMAL', bot: 1 },
   { id: 'cpu2', label: 'CPU HARD', bot: 2 },
@@ -2794,9 +2861,27 @@ function padRumble(gp, weak, strong, ms) {
 // which physical pad (if any) should feel this player's events; online matches point p.feelDev at the local pad
 function feelDevOf(p) { return p ? (p.feelDev || p.dev) : null; }
 // ---- semantic game events -> feel ----
+// phones: navigator.vibrate patterns (Android; iOS Safari has no vibration API)
+function touchFeel(ev, p, a) {
+  if (!SET.rumble || !TOUCH.on) return;
+  switch (ev) {
+    case 'place': touchVibe(14); break;
+    case 'explosion': { if (!a) break; const mag = clamp(1 - Math.hypot(a.x - p.x, a.y - p.y) / (a.range * TS + 70), 0, 1); if (mag >= 0.05) touchVibe(Math.round(25 + mag * 140)); break; }
+    case 'item': touchVibe(22); break;
+    case 'curse': touchVibe([40, 30, 40]); break;
+    case 'shield': touchVibe(45); break;
+    case 'death': touchVibe([60, 40, 200]); break;
+    case 'kick': case 'lift': case 'throw': case 'land': touchVibe(16); break;
+    case 'detonate': touchVibe(30); break;
+    case 'bosshit': touchVibe(60); break;
+    case 'bossdie': touchVibe([80, 50, 300]); break;
+    default: break;
+  }
+}
 const Feel = {
   event(ev, p, a) {
     const fd = feelDevOf(p);
+    if (fd && fd.kind === 'touch') { touchFeel(ev, p, a); return; }
     if (!SET.rumble || !p || !fd || fd.kind !== 'pad' || !fd.connected) return;
     const gp = fd.gp; if (!gp) return; const kind = padKind(gp), ds = kind === 'ds' ? DS.forPad(gp) : null;
     let w = 0, s = 0, ms = 0, hap = null;
@@ -2953,7 +3038,7 @@ SCENES.splash = {
   t: 0,
   enter() { this.t = 0; musStop(); },
   update(dt) { this.t += dt; updateTB(dt); if (this.t > 0.3 && NAV.any && !busy()) { sfx('select'); gotoScene('title'); } },
-  draw() { drawTB(0); drawLogo(this.t, 62); if (Math.floor(this.t * 2) % 2 === 0) txt('PRESS ANY KEY OR CLICK TO START', W / 2, 150, '#fff', { al: 'c', ol: '#000' }); txt('KEYBOARD + XBOX + PLAYSTATION CONTROLLERS', W / 2, 212, '#8a7ac8', { al: 'c' }); txt('CODE-ONLY: ZERO EXTERNAL ASSETS', W / 2, 224, '#6a5aa8', { al: 'c' }); },
+  draw() { drawTB(0); drawLogo(this.t, 62); if (Math.floor(this.t * 2) % 2 === 0) txt(TOUCH.avail ? 'TAP OR PRESS ANY KEY TO START' : 'PRESS ANY KEY OR CLICK TO START', W / 2, 150, '#fff', { al: 'c', ol: '#000' }); txt(TOUCH.avail ? 'TOUCHSCREEN + KEYBOARD + CONTROLLERS' : 'KEYBOARD + XBOX + PLAYSTATION CONTROLLERS', W / 2, 212, '#8a7ac8', { al: 'c' }); txt('CODE-ONLY: ZERO EXTERNAL ASSETS', W / 2, 224, '#6a5aa8', { al: 'c' }); },
 };
 
 // ---------- TITLE ----------
@@ -2977,10 +3062,10 @@ SCENES.title = {
   draw() {
     drawTB((Math.floor(this.t / 8)) % 5); drawLogo(this.t, 22);
     const m = this.menu; panel(88, 80, 144, 92, 'rgba(10,6,22,0.85)', '#6a5acd', '#2a2050');
-    m.items.forEach((it, i) => { const y = 87 + i * 16, sel = i === m.sel; txt(it.label(), W / 2 + 4, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c', sc: 1, sh: '#000' }); if (sel) drawCursor(100, y + 4, this.t); });
+    m.items.forEach((it, i) => { const y = 87 + i * 16, sel = i === m.sel; txt(it.label(), W / 2 + 4, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c', sc: 1, sh: '#000' }); if (sel) drawCursor(100, y + 4, this.t); hitRow(m, i, 90, y - 5, 140, 16); });
     const hi = SET.hi && SET.hi[0] ? SET.hi[0] : null;
     txt(hi ? 'HI-SCORE ' + String(hi.s).padStart(7, '0') + '  ' + hi.n : 'NO HI-SCORE YET', W / 2, 182, '#ffd84a', { al: 'c', ol: '#000' });
-    txt('UP/DOWN + ENTER, OR USE A CONTROLLER', W / 2, 214, '#8a7ac8', { al: 'c' });
+    txt(TOUCH.on ? 'TAP AN ENTRY, OR USE THE D-PAD' : 'UP/DOWN + ENTER, OR USE A CONTROLLER', W / 2, 214, '#8a7ac8', { al: 'c' });
     txt('(C) 2026 BOOMGRID', W / 2, 226, '#5a4a88', { al: 'c' });
   },
 };
@@ -2996,7 +3081,7 @@ SCENES.howto = {
       txt('HOW TO PLAY', W / 2, 12, '#ffe45e', { al: 'c', ol: '#000', sc: 2 });
       const rows = [
         ['MOVE', 'ARROWS / WASD / STICK / D-PAD'], ['BOMB', 'SPACE / Z / X-BUTTON / R2'], ['ACTION', 'X / SHIFT / O-BUTTON / L2'], ['PAUSE', 'ESC / P / START'], ['', ''],
-        ['STORY', 'CLEAR FOES, FIND EXIT, BEAT BOSSES'], ['BATTLE', 'LAST BOMBER STANDING WINS'], ['', ''],
+        ['STORY', 'CLEAR FOES, FIND EXIT, BEAT BOSSES'], ['BATTLE', 'LAST BOMBER STANDING WINS'], ['TOUCH', 'STICK MOVES, BUTTONS BOMB + ACT'],
         ['P2 KEYS', 'WASD + SPACE/F  OR  ARROWS + ENTER'], ['ONLINE', 'HOST A ROOM, FRIENDS JOIN WITH THE CODE'],
         ['GLOVE', 'BOMB UNDER YOU: LIFT. AGAIN: THROW'], ['REMOTE', 'ACTION = DETONATE YOUR BOMBS'], ['BOMB RUSH', 'ACTION = LINE OF BOMBS'],
       ];
@@ -3006,7 +3091,7 @@ SCENES.howto = {
       txt('POWER-UPS', W / 2, 12, '#ffe45e', { al: 'c', ol: '#000', sc: 2 });
       ITEM_INFO.forEach((it, i) => { const col = i % 2, row = Math.floor(i / 2), x = 14 + col * 152, y = 36 + row * 26; g.drawImage(SPR.item[i][Math.floor(this.t * 3 + i) % 2], x, y); txt(it.n, x + 20, y + 2, '#fff'); txt(it.d, x + 20, y + 12, '#a898d8'); });
     }
-    txt('< > NEXT PAGE     BACK: ESC', W / 2, 224, '#8a7ac8', { al: 'c' });
+    txt(TOUCH.on ? 'OK = NEXT PAGE     BACK = BACK' : '< > NEXT PAGE     BACK: ESC', W / 2, 224, '#8a7ac8', { al: 'c' });
   },
 };
 
@@ -3017,12 +3102,12 @@ SCENES.options = {
   enter() {
     this.t = 0; const self = this;
     const lvl = (k, n) => ({ label: () => '', get: () => Math.round(SET[k] * n) });
-    this.menu = { sel: 0, onBack() { saveSettings(); gotoScene('title'); }, items: [
+    const all = [
       { label: () => 'MUSIC VOLUME', value: () => '#'.repeat(Math.round(SET.music * 10)).padEnd(10, '-'), change(d) { SET.music = clamp(Math.round(SET.music * 10 + d) / 10, 0, 1); auApplyVolumes(); } },
       { label: () => 'SFX VOLUME', value: () => '#'.repeat(Math.round(SET.sfx * 10)).padEnd(10, '-'), change(d) { SET.sfx = clamp(Math.round(SET.sfx * 10 + d) / 10, 0, 1); auApplyVolumes(); sfx('boom', 0.5); } },
       { label: () => 'SCREEN SHAKE', value: () => ['OFF', 'LOW', 'NORMAL', 'HIGH'][Math.round(SET.shake * 2 + (SET.shake > 1 ? 0 : 0))] || 'NORMAL', change(d) { const v = [0, 0.5, 1, 1.5]; let i = v.indexOf(SET.shake); if (i < 0) i = 2; i = clamp(i + d, 0, 3); SET.shake = v[i]; } },
       { label: () => 'CRT FILTER', value: () => SET.crt ? 'ON' : 'OFF', toggle: true, change() { SET.crt = SET.crt ? 0 : 1; } },
-      { label: () => 'SCALING', value: () => SET.scaling ? 'FILL' : 'PIXEL PERFECT', toggle: true, change() { SET.scaling = SET.scaling ? 0 : 1; resize(); } },
+      { label: () => 'SCALING', value: () => SET.scaling ? 'FILL' : 'PIXEL PERFECT', toggle: true, change() { SET.scaling = SET.scaling ? 0 : 1; SET.tscaled = 1; resize(); } },
       { label: () => 'BLAST PREVIEW', value: () => SET.preview ? 'ON' : 'OFF', toggle: true, change() { SET.preview = SET.preview ? 0 : 1; } },
       { label: () => 'RUMBLE', value: () => SET.rumble ? 'ON' : 'OFF', toggle: true, change() { SET.rumble = SET.rumble ? 0 : 1; } },
       { label: () => 'DUALSENSE HD HAPTICS', value: () => SET.haptics ? 'ON' : 'OFF', toggle: true, change() { SET.haptics = SET.haptics ? 0 : 1; } },
@@ -3032,7 +3117,16 @@ SCENES.options = {
       { label: () => 'TEST CONTROLLER FEEDBACK', enter() { Feel.test(); optMsg.s = 'TESTING...'; } },
       { label: () => 'FULLSCREEN', enter() { toggleFullscreen(); } },
       { label: () => 'BACK', enter() { saveSettings(); gotoScene('title'); } },
-    ] };
+    ];
+    const ds = new Set(['DUALSENSE HD HAPTICS', 'ADAPTIVE TRIGGERS', 'LINK DUALSENSE (WEBHID)', 'CONNECT HAPTIC AUDIO (USB)', 'TEST CONTROLLER FEEDBACK']);
+    let items = all.filter(it => DS.supported || PADS.length || !ds.has(it.label()));      // no WebHID and no pad (phones, Safari): hide the controller-only rows
+    if (TOUCH.avail) {
+      const at = items.findIndex(it => it.label() === 'FULLSCREEN');
+      items.splice(at < 0 ? items.length - 1 : at, 0,
+        { label: () => 'TOUCH CONTROLS', value: () => SET.tpad ? 'D-PAD' : 'FLOATING STICK', toggle: true, change() { SET.tpad = SET.tpad ? 0 : 1; touchResize(); } },
+        { label: () => 'TOUCH BUTTON SIZE', value: () => ['SMALL', 'MEDIUM', 'LARGE'][SET.tsize], change(d) { SET.tsize = clamp(SET.tsize + d, 0, 2); touchResize(); } });
+    }
+    this.menu = { sel: 0, onBack() { saveSettings(); gotoScene('title'); }, items };
   },
   update(dt) { this.t += dt; updateTB(dt); menuUpdate(this.menu); },
   draw() {
@@ -3040,10 +3134,11 @@ SCENES.options = {
     txt('OPTIONS', W / 2, 9, '#ffe45e', { al: 'c', ol: '#000', sc: 2 });
     const m = this.menu;
     m.items.forEach((it, i) => {
-      const y = 26 + i * 11, sel = i === m.sel; txt(it.label(), 26, y, sel ? '#ffe45e' : '#c8c0e8');
+      const y = 26 + i * 11, sel = i === m.sel; hitRow(m, i, 14, y - 2, 292, 11); txt(it.label(), 26, y, sel ? '#ffe45e' : '#c8c0e8');
       if (it.value) { const v = it.value(); txt(v, 296, y, sel ? '#fff' : '#9a8ad0', { al: 'r' }); if (sel && it.change) { txt('<', 296 - textWidth(v) - 8, y, '#ffe45e'); txt('>', 292, y, '#ffe45e'); } }
       if (sel) drawCursor(17, y + 3, this.t);
     });
+    if (!DS.supported && !PADS.length) return;      // phones: nothing to report about controllers
     const kinds = PADS.map(gp => padKind(gp)); const has = k => kinds.includes(k);
     const line = 'PADS: ' + (PADS.length ? PADS.map(gp => ({ ds: 'DUALSENSE', xbox: 'XBOX', generic: 'GAMEPAD' })[padKind(gp)]).join(', ') : 'NONE DETECTED');
     txt(fitStr(line, 48), 16, 186, '#8a7ac8');
@@ -3065,9 +3160,10 @@ SCENES.lobby = {
       if (PADS.length) { G.slots[1] = G.mode === 'battle' ? 'pad0' : 'pad0'; }
     }
     const self = this, story = G.mode === 'story';
+    if (TOUCH.on) { const k = G.slots.indexOf('all'); if (k >= 0 && !G.slots.includes('touch')) G.slots[k] = 'touch'; else if (!G.slots.includes('touch')) { const j = G.slots.findIndex(s => s === 'off' || s.startsWith('cpu')); if (j >= 0) G.slots[j] = 'touch'; } }
     const slotItem = i => ({
       slot: i, label: () => 'PLAYER ' + (i + 1), value: () => slotOptionById(G.slots[i]).label,
-      change(d) { const ids = SLOT_OPTIONS.map(o => o.id); let k = ids.indexOf(G.slots[i]); k = (k + d + ids.length) % ids.length; G.slots[i] = ids[k]; },
+      change(d) { const ids = SLOT_OPTIONS.filter(o => o.id !== 'touch' || TOUCH.avail).map(o => o.id); let k = ids.indexOf(G.slots[i]); k = (k + d + ids.length) % ids.length; G.slots[i] = ids[k]; },
     });
     const items = [0, 1, 2, 3].map(slotItem);
     if (story) {
@@ -3107,11 +3203,12 @@ SCENES.lobby = {
     const story = G.mode === 'story';
     drawTB(story ? 0 : 3); panel(10, 6, 300, 228, 'rgba(10,6,22,0.92)', '#6a5acd', '#2a2050');
     txt(story ? 'STORY MODE' : 'BATTLE MODE', W / 2, 11, '#ffe45e', { al: 'c', ol: '#000', sc: 2 });
-    txt('LEFT/RIGHT CHANGES - PRESS PAD BUTTON TO JOIN', W / 2, 28, '#8a7ac8', { al: 'c' });
+    txt(TOUCH.on ? 'TAP LEFT / RIGHT SIDE OF A ROW TO CHANGE IT' : 'LEFT/RIGHT CHANGES - PRESS PAD BUTTON TO JOIN', W / 2, 28, '#8a7ac8', { al: 'c' });
     const m = this.menu;
     m.items.forEach((it, i) => {
       const y = 44 + i * (i < 4 ? 22 : 14) + (i >= 4 ? 0 : 0) - (i >= 4 ? 0 : 0), sel = i === m.sel;
       const yy = i < 4 ? 42 + i * 21 : 42 + 4 * 21 + 8 + (i - 4) * 13;
+      hitRow(m, i, 14, i < 4 ? yy - 4 : yy - 3, 292, i < 4 ? 20 : 13);
       if (it.slot !== undefined) {
         const opt = slotOptionById(G.slots[it.slot]), off = opt.id === 'off', pc = PCOLS[it.slot];
         R(g, sel ? '#2a2050' : '#1a1230', 20, yy - 4, 280, 19); R(g, off ? '#3a3050' : pc.ui, 20, yy - 4, 2, 19);
@@ -3353,15 +3450,17 @@ const PLAY = {
   pauseUpdate() {
     if (this.pausedMsg && G.players.every(p => !(p.dev && p.dev.kind === 'pad' && !p.dev.connected && !p.bot))) this.pausedMsg = '';
     const n = 3; if (NAV.u) { this.pauseSel = (this.pauseSel + n - 1) % n; sfx('move'); } if (NAV.d) { this.pauseSel = (this.pauseSel + 1) % n; sfx('move'); }
-    let go = NAV.ok; if (KP['Escape'] || KP['KeyP']) { this.paused = false; sfx('back'); return; }
+    let go = NAV.ok; if (KP['Escape'] || KP['KeyP'] || NAV.back) { this.paused = false; sfx('back'); return; }
     for (const p of G.players) if (p.dev && p.dev.startP) go = true;
-    if (go && !this.pausedMsg) {
-      sfx('select');
-      if (this.pauseSel === 0) this.paused = false;
-      else if (this.pauseSel === 1) { this.paused = false; if (G.mode === 'story') { loadStage(G.stageIdx); } else loadRound(); }
-      else { this.paused = false; gotoScene('title'); }
-    }
+    if (go && !this.pausedMsg) this.pauseDo(this.pauseSel);
   },
+  pauseDo(i) {
+    sfx('select'); this.pauseSel = i;
+    if (i === 0) this.paused = false;
+    else if (i === 1) { this.paused = false; if (G.mode === 'story') { loadStage(G.stageIdx); } else loadRound(); }
+    else { this.paused = false; gotoScene('title'); }
+  },
+  pauseMenu: null,   // adapter so the touch layer can tap the pause rows like any other menu
   draw() {
     const t = this.t; drawLevel(t);
     drawHUD(t, { winsNeeded: G.rounds });
@@ -3371,7 +3470,7 @@ const PLAY = {
       g.globalAlpha = 0.7; R(g, '#000', 0, 0, W, H); g.globalAlpha = 1; panel(90, 84, 140, 76, '#140c2a', '#6a5acd', '#2a2050');
       txt('PAUSED', W / 2, 90, '#ffe45e', { al: 'c', sc: 2, ol: '#000' });
       if (this.pausedMsg) { txt(this.pausedMsg, W / 2, 116, '#ff6a6a', { al: 'c' }); txt('RECONNECT TO CONTINUE', W / 2, 128, '#c8c0e8', { al: 'c' }); }
-      else this.pauseItems().forEach((s, i) => { const y = 112 + i * 13, sel = i === this.pauseSel; txt(s, W / 2 + 6, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(112, y + 3, t); });
+      else this.pauseItems().forEach((s, i) => { const y = 112 + i * 13, sel = i === this.pauseSel; txt(s, W / 2 + 6, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(112, y + 3, t); hitRow(this.pauseMenuObj(), i, 96, y - 3, 128, 13); });
     }
   },
   drawOverlays(t) {
@@ -3408,6 +3507,10 @@ const PLAY = {
     // player tags at round start
     if ((L.state === 'intro' || (L.state === 'play' && L.stateT < 2)) && G.mode === 'battle') for (const p of L.players) { const x = L.ox + p.x, y = L.oy + p.y - 16; const tag = cachedSil(SPR.ui.arrowD, PCOLS[p.col].ui); g.drawImage(tag, Math.round(x - 2), Math.round(y + Math.sin(this.t * 8))); }
   },
+};
+PLAY.pauseMenuObj = function () {
+  if (!this.pauseMenu) { const self = this; this.pauseMenu = { get sel() { return self.pauseSel; }, set sel(v) { self.pauseSel = v; }, items: [0, 1, 2].map(i => ({ enter() { self.pauseDo(i); } })) }; }
+  return this.pauseMenu;
 };
 SCENES.play = PLAY;
 
@@ -3446,7 +3549,7 @@ SCENES.results = {
     txt(ch.name, W / 2, 96, PCOLS[ch.col].ui, { al: 'c', sc: 2, ol: '#000' });
     txt('PLAYER   WINS  KILLS  DEATHS  ITEMS', 44, 122, '#a898d8');
     r.players.forEach((p, i) => { const y = 136 + i * 13; g.drawImage(SPR.pl[p.col][DOWN][0], 2, 0, 12, 10, 44, y - 1, 12, 10); txt(p.name, 60, y, PCOLS[p.col].ui); txt(String(p.wins), 128, y, '#fff'); txt(String(p.kills || 0), 170, y, '#fff'); txt(String(p.deaths || 0), 216, y, '#fff'); txt(String(p.itemsGot || 0), 262, y, '#fff'); });
-    this.menu.items.forEach((it, i) => { const y = 196 + 0 * i, x = 50 + i * 80, sel = i === this.menu.sel; txt(it.label(), x + 30, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(x + 30 - textWidth(it.label()) / 2 - 10, y + 3, this.t); });
+    this.menu.items.forEach((it, i) => { const y = 196 + 0 * i, x = 50 + i * 80, sel = i === this.menu.sel; txt(it.label(), x + 30, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(x + 30 - textWidth(it.label()) / 2 - 10, y + 3, this.t); hitRow(this.menu, i, x - 4, y - 6, 68, 20); });
   },
 };
 // tweak: results menu is horizontal
@@ -3504,7 +3607,7 @@ const NET = {
   sim: { lat: 0, jit: 0, loss: 0 },        // debug: delay/drop outgoing "fast" packets (used by tests, F3 overlay shows it)
   simT: 0, pingN: 0, pingT: 0,
 };
-const BUILD_ID = '175cbff7';   // hash of the game source, injected by build.js: peers must run identical code to stay in lockstep
+const BUILD_ID = 'a1b20699';   // hash of the game source, injected by build.js: peers must run identical code to stay in lockstep
 const nowMs = () => performance.now();
 function netOn(kind, fn) { NET.handlers[kind] = fn; }
 function netListen(fn) { NET.listeners.push(fn); }
@@ -3768,6 +3871,7 @@ const NetSync = {
     if (NETM.menuOpen) return { d: -1, bp: 0, ap: 0 };
     const kb = DEV.all; let d = kb.dir, bp = kb.bombP, ap = kb.actP;
     for (let i = 0; i < 4; i++) { const p = DEV['pad' + i]; if (!p.connected) continue; if (d < 0) d = p.dir; bp = bp || p.bombP; ap = ap || p.actP; }
+    if (TOUCH.on) { const t = DEV.touch; if (d < 0) d = t.dir; bp = bp || t.bombP; ap = ap || t.actP; }
     return { d, bp: bp ? 1 : 0, ap: ap ? 1 : 0 };
   },
   // turn a local sample into a wire entry tagged for frame f + delay (or null when coalesced into the next one)
@@ -3831,7 +3935,7 @@ const NetSync = {
     }
     // haptics: only the local player's own pad feels anything
     const me = G.players.find(p => p.idx === M.mySlot);
-    if (me && !me.bot) { let fd = null; for (let i = 0; i < 4; i++) if (DEV['pad' + i].connected) { fd = DEV['pad' + i]; break; } me.feelDev = fd; }
+    if (me && !me.bot) { let fd = null; for (let i = 0; i < 4; i++) if (DEV['pad' + i].connected) { fd = DEV['pad' + i]; break; } if (!fd && TOUCH.on) fd = DEV.touch; me.feelDev = fd; }
   },
   after() {
     const M = NETM; M.f++;
@@ -3909,10 +4013,14 @@ const NetSync = {
   },
 
   // ---------------- in-match menu (does NOT pause: everyone else keeps playing) ----------------
+  menuObj() { // adapter so the touch layer can tap the match-menu rows
+    if (!this._mo) this._mo = { get sel() { return NETM.menuSel; }, set sel(v) { NETM.menuSel = v; }, items: [{ enter() { sfx('select'); NETM.menuOpen = false; } }, { enter() { sfx('select'); NetSync.leave(); } }] };
+    return this._mo;
+  },
   menuTick() {
     const M = NETM;
     if (KP['Backquote']) M.dbg = !M.dbg;
-    let start = KP['Escape'] || KP['KeyP']; for (let i = 0; i < 4; i++) if (DEV['pad' + i].startP) start = true;
+    let start = KP['Escape'] || KP['KeyP'] || (TOUCH.on && DEV.touch.startP); for (let i = 0; i < 4; i++) if (DEV['pad' + i].startP) start = true;
     if (!M.menuOpen) { if (start && SCENE && SCENE.name === 'play') { M.menuOpen = true; M.menuSel = 0; sfx('select'); } return; }
     if (NAV.u || NAV.d) { M.menuSel = 1 - M.menuSel; sfx('move'); }
     if (start || NAV.back) { M.menuOpen = false; sfx('back'); return; }
@@ -3935,7 +4043,7 @@ const NetSync = {
     if (M.menuOpen) {
       g.globalAlpha = 0.55; R(g, '#000', 0, 0, W, H); g.globalAlpha = 1; panel(84, 84, 152, 66, '#140c2a', '#6a5acd', '#2a2050');
       txt('MATCH MENU', W / 2, 90, '#ffe45e', { al: 'c', ol: '#000' }); txt(M.isHost ? 'HOST LEAVING ENDS THE MATCH' : 'GAME KEEPS RUNNING', W / 2, 101, M.isHost ? '#ff8a6a' : '#8a7ac8', { al: 'c' });
-      ['RESUME', 'LEAVE MATCH'].forEach((s, i) => { const y = 116 + i * 14, sel = i === M.menuSel; txt(s, W / 2 + 6, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(W / 2 - textWidth(s) / 2 - 8, y + 3, t); });
+      ['RESUME', 'LEAVE MATCH'].forEach((s, i) => { const y = 116 + i * 14, sel = i === M.menuSel; txt(s, W / 2 + 6, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(W / 2 - textWidth(s) / 2 - 8, y + 3, t); hitRow(NetSync.menuObj(), i, 92, y - 4, 136, 14); });
     }
     if (M.dbg) {
       const lines = ['F ' + M.f + ' MID ' + M.mid + (M.isHost ? ' HOST' : ' CLIENT'), 'D ' + M.D + ' BUF ' + M.buf + ' RUN ' + M.run + ' DH ' + M.Dh, 'STALL ' + M.stats.stalls + ' NEED ' + M.stats.needs + ' RR ' + M.stats.rr + ' LATE ' + M.lateHost,
@@ -4094,14 +4202,14 @@ SCENES.online = {
     txt('UP TO 4 PLAYERS - CPUS FILL EMPTY SEATS', W / 2, 44, '#8a7ac8', { al: 'c' });
     const m = this.menu;
     m.items.forEach((it, i) => {
-      const y = 62 + i * 16, sel = i === m.sel && this.mode === 'menu'; txt(it.label(), 44, y, sel ? '#ffe45e' : '#c8c0e8');
+      const y = 62 + i * 16, sel = i === m.sel && this.mode === 'menu'; if (this.mode === 'menu' && !this.busy) hitRow(m, i, 30, y - 5, 260, 16); txt(it.label(), 44, y, sel ? '#ffe45e' : '#c8c0e8');
       if (it.value) { const v = it.value(); txt(v, 276, y, sel ? '#fff' : '#9a8ad0', { al: 'r' }); if (sel && it.change) { txt('<', 276 - textWidth(v) - 8, y, '#ffe45e'); txt('>', 272, y, '#ffe45e'); } }
       if (sel) drawCursor(35, y + 3, this.t);
     });
     if (this.status) txt(fitStr(this.status, 44), W / 2, 168, this.bad ? '#ff6a6a' : '#ffd84a', { al: 'c', ol: '#000' });
     txt('HOSTING? RUN RELAY.JS, SHARE THE CODE', W / 2, 190, '#6a5aa8', { al: 'c' });
     txt('FRIENDS OPEN THE SAME PAGE OR SERVER', W / 2, 200, '#6a5aa8', { al: 'c' });
-    txt('BACK: ESC', W / 2, 214, '#8a7ac8', { al: 'c' });
+    txt(TOUCH.on ? 'TAP A ROW, OR BACK' : 'BACK: ESC', W / 2, 214, '#8a7ac8', { al: 'c' });
     if (this.mode !== 'menu' && TEXTIN.active) this.drawEntry();
   },
   drawEntry() {
@@ -4168,6 +4276,7 @@ SCENES.onlobby = {
     const m = this.menu;
     m.items.forEach((it, i) => {
       const sel = i === m.sel, yy = i < 4 ? 42 + i * 21 : 42 + 4 * 21 + 8 + (i - 4) * 13;
+      hitRow(m, i, 14, i < 4 ? yy - 4 : yy - 3, 292, i < 4 ? 20 : 13);
       if (it.slot !== undefined) {
         const s = LOB.slots[it.slot] || { t: 'open' }, pc = PCOLS[it.slot], off = s.t === 'off', human = s.t === 'human';
         R(g, sel ? '#2a2050' : '#1a1230', 20, yy - 4, 280, 19); R(g, off ? '#3a3050' : pc.ui, 20, yy - 4, 2, 19);
@@ -4220,10 +4329,270 @@ SCENES.netresults = {
   draw() {
     SCENES.results.draw.call({ t: this.t, menu: { items: [], sel: 0 } });
     const m = this.menu, n = m.items.length, step = n === 1 ? 0 : 80, x0 = W / 2 - (n - 1) * step / 2;
-    m.items.forEach((it, i) => { const y = 196, x = x0 + i * step, sel = i === m.sel; txt(it.label(), x, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(x - textWidth(it.label()) / 2 - 10, y + 3, this.t); });
+    m.items.forEach((it, i) => { const y = 196, x = x0 + i * step, sel = i === m.sel; txt(it.label(), x, y, sel ? '#ffe45e' : '#c8c0e8', { al: 'c' }); if (sel) drawCursor(x - textWidth(it.label()) / 2 - 10, y + 3, this.t); hitRow(m, i, x - 34, y - 6, 68, 20); });
     if (!NET.isHost) txt('WAITING FOR THE HOST TO PICK...', W / 2, 214, '#8a7ac8', { al: 'c' });
   },
 };
+
+
+// ==================== 17_touch.js ====================
+// =====================================================================
+// TOUCH: on-screen controls for phones and tablets.
+//   gameplay : floating thumbstick (or a fixed D-pad, see OPTIONS) + BOMB / ACT buttons + pause
+//   menus    : tap a row to pick it (left/right half of a value row changes it), D-pad + OK/BACK as a fallback
+//   text     : a small keyboard drawn in the game for names and room codes
+// The controls are DOM elements (template.html). This module turns pointer events into the same signals a
+// gamepad gives (DEV.touch), so gameplay, menus and online play run through the normal input path unchanged.
+// =====================================================================
+const TOUCH = {
+  avail: false,            // this device can do touch at all
+  on: false,               // the player is using touch right now (controls visible); a key or pad press turns it off
+  ctx: 'menu', key: '', ui: null, portrait: false, canFs: false, R: 50, tscale: 1,
+  u: 0, d: 0, l: 0, r: 0, bomb: 0, act: 0, start: 0,                      // held
+  lu: 0, ld: 0, ll: 0, lr: 0, lbomb: 0, lact: 0, lstart: 0,                // latched: a tap shorter than one frame still registers
+  dir: -1, ptrs: new Map(), stick: { cx: 0, cy: 0, x: 0, y: 0, dir: -1, on: false }, dpDir: -1,
+  rows: [], rowsNext: [], kb: [], kbHit: null, kbT: 0, rotHide: false,
+};
+
+function touchPoll() {
+  const T = TOUCH;
+  if (!T.on) return { u: 0, d: 0, l: 0, r: 0, bomb: 0, act: 0, start: 0 };
+  const o = { u: T.u | T.lu, d: T.d | T.ld, l: T.l | T.ll, r: T.r | T.lr, bomb: T.bomb | T.lbomb, act: T.act | T.lact, start: T.start | T.lstart };
+  T.lu = T.ld = T.ll = T.lr = T.lbomb = T.lact = T.lstart = 0;
+  return o;
+}
+function touchVibe(p) { try { if (SET.rumble && navigator.vibrate) navigator.vibrate(p); } catch (e) { } }
+
+// ---------------- direction helpers ----------------
+// dominant axis with hysteresis (no flicker while a thumb wobbles near a diagonal); returns DOWN/UP/LEFT/RIGHT or -1
+function tdir(dx, dy, dz, prev) {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax < dz && ay < dz) return -1;
+  let horiz = ax >= ay;
+  if (prev >= 0) horiz = prev >= LEFT ? ay <= ax * 1.35 : ax > ay * 1.35;
+  return horiz ? (dx < 0 ? LEFT : RIGHT) : (dy < 0 ? UP : DOWN);
+}
+function tsetDir(d) {
+  const T = TOUCH;
+  T.u = d === UP ? 1 : 0; T.d = d === DOWN ? 1 : 0; T.l = d === LEFT ? 1 : 0; T.r = d === RIGHT ? 1 : 0;
+  if (d >= 0 && d !== T.dir) { if (d === UP) T.lu = 1; else if (d === DOWN) T.ld = 1; else if (d === LEFT) T.ll = 1; else T.lr = 1; }
+  T.dir = d;
+}
+
+// ---------------- context: what should the controls be doing right now ----------------
+function touchCtx() {
+  if (!SCENE || SCENE.name !== 'play') return 'menu';
+  if (PLAY.paused) return 'menu';
+  if (NETM.on && NETM.menuOpen) return 'menu';
+  return 'play';
+}
+
+// menus call this from draw() so a tap on a row can find it (game-pixel rectangle)
+function hitRow(m, i, x, y, w, h) { TOUCH.rowsNext.push({ m, i, x, y, w, h, scene: SCENE ? SCENE.name : '' }); }
+function tapRow(row, gx) {
+  if (busy() || !SCENE || SCENE.name !== row.scene) return;
+  const m = row.m, it = m.items[row.i]; if (!it || (it.skip && it.skip())) return;
+  m.sel = row.i;
+  if (it.enter) { it.enter(); Feel.menuClick(true); }
+  else if (it.change) { if (it.toggle) { it.change(1); sfx('select'); } else { it.change(gx < row.x + row.w * 0.5 ? -1 : 1); sfx('move'); } }
+}
+
+// ---------------- on-screen keyboard (names, room codes, server address) ----------------
+function tkbLayout() {
+  const T = TEXTIN, kb = [], up = T.upper !== false;
+  const ok = ch => T.allow.test(up ? ch : ch.toLowerCase());
+  const rows = [];
+  const digits = '1234567890'.split('').filter(ok); if (digits.length) rows.push(digits.map(c => ({ k: 'ch', c })));
+  rows.push('QWERTYUIOP'.split('').filter(ok).map(c => ({ k: 'ch', c })));
+  rows.push('ASDFGHJKL'.split('').filter(ok).map(c => ({ k: 'ch', c })));
+  rows.push('ZXCVBNM'.split('').filter(ok).map(c => ({ k: 'ch', c })).concat([{ k: 'del', c: 'DEL', w: 2 }]));
+  const last = ['.', '-', '_', ':', '/'].filter(ok).map(c => ({ k: 'ch', c }));
+  if (ok(' ')) last.push({ k: 'ch', c: ' ', label: 'SPC', w: 2 });
+  last.push({ k: 'cancel', c: 'ESC', w: 2 }, { k: 'ok', c: 'OK', w: 2 });
+  rows.push(last);
+  const kw = 26, kh = 17, gap = 3, n = rows.length, y0 = H - 4 - n * (kh + gap) + gap;
+  rows.forEach((row, ri) => {
+    const tw = row.reduce((s, k) => s + (k.w || 1) * kw + ((k.w || 1) - 1) * gap + gap, -gap);
+    let x = Math.round((W - tw) / 2);
+    for (const k of row) { const w = (k.w || 1) * kw + ((k.w || 1) - 1) * gap; kb.push({ k: k.k, c: k.c, label: k.label || k.c, x, y: y0 + ri * (kh + gap), w, h: kh }); x += w + gap; }
+  });
+  TOUCH.kb = kb; TOUCH.kbTop = y0 - 4;
+}
+function tkbDraw() {
+  tkbLayout(); const T = TOUCH;
+  g.globalAlpha = 0.96; R(g, '#0c0818', 0, T.kbTop, W, H - T.kbTop); g.globalAlpha = 1; R(g, '#6a5acd', 0, T.kbTop, W, 1);
+  for (const k of T.kb) {
+    const down = T.kbHit === k.label && T.kbT > 0, col = k.k === 'ok' ? '#2d7a3a' : k.k === 'cancel' ? '#7a2d3a' : k.k === 'del' ? '#4a3d7a' : '#2a2050';
+    R(g, down ? '#ffb02a' : '#6a5acd', k.x, k.y, k.w, k.h); R(g, down ? '#ffe45e' : col, k.x + 1, k.y + 1, k.w - 2, k.h - 2);
+    txt(k.label, k.x + k.w / 2, k.y + 5, down ? '#000' : '#fff', { al: 'c' });
+  }
+  T.kbT -= 1 / 60;
+}
+function tkbTap(gx, gy) {
+  const T = TOUCH; let best = null, bd = 1e9;
+  for (const k of T.kb) { const cx = k.x + k.w / 2, cy = k.y + k.h / 2, d = Math.hypot((gx - cx) / (k.w / 2 + 1.5), (gy - cy) / (k.h / 2 + 1.5)); if (d < bd) { bd = d; best = k; } }
+  if (!best || bd > 1.15) return false;
+  const I = TEXTIN; T.kbHit = best.label; T.kbT = 0.12; sfx('move'); touchVibe(6);
+  if (best.k === 'ch') textAdd(I.upper !== false ? best.c : best.c.toLowerCase());
+  else if (best.k === 'del') I.buf = I.buf.slice(0, -1);
+  else if (best.k === 'ok') { const v = I.buf, cb = I.done; I.active = false; if (cb) cb(v); }
+  else if (best.k === 'cancel') { const cb = I.cancel; I.active = false; if (cb) cb(); }
+  return true;
+}
+
+// ---------------- pointer handling ----------------
+function tEl(id) { return document.getElementById(id); }
+function tHitCircle(el, x, y, pad) {
+  const r = el.getBoundingClientRect(); if (!r.width) return false;
+  return Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) <= (r.width / 2) * (pad || 1.18);
+}
+function tHitRect(el, x, y, grow) {
+  const r = el.getBoundingClientRect(); if (!r.width) return false; const g2 = (grow || 0) * r.width;
+  return x >= r.left - g2 && x <= r.right + g2 && y >= r.top - g2 && y <= r.bottom + g2;
+}
+function toGame(x, y) { const r = disp.getBoundingClientRect(); return { x: (x - r.left) / r.width * W, y: (y - r.top) / r.height * H, inside: x >= r.left && x <= r.right && y >= r.top && y <= r.bottom }; }
+function tDown(el, on) { if (el) el.classList.toggle('down', !!on); }
+
+function touchRelease() {
+  const T = TOUCH; T.ptrs.clear();
+  T.bomb = T.act = T.start = 0; tsetDir(-1); T.stick.on = false; T.stick.dir = -1; T.dpDir = -1;
+  if (T.ui) { tDown(T.ui.bomb, 0); tDown(T.ui.act, 0); tDown(T.ui.pause, 0); tDown(T.ui.fs, 0); }
+}
+
+function tpDown(e) {
+  const T = TOUCH, ui = T.ui; if (!ui) return;
+  const touchy = e.pointerType === 'touch' || e.pointerType === 'pen';
+  if (touchy && !T.on) { T.on = true; T.key = ''; touchSync(); }
+  const x = e.clientX, y = e.clientY, id = e.pointerId;
+  if (touchy) e.preventDefault();
+  // the on-screen keyboard takes every tap while a text field is open
+  if (TEXTIN.active && T.on) { const q = toGame(x, y); if (q.inside) tkbTap(q.x, q.y); return; }
+  const ctx = touchCtx();
+  if (ctx === 'play') {
+    if (!T.on) return;
+    if (tHitCircle(ui.bomb, x, y)) { T.ptrs.set(id, { role: 'bomb' }); T.bomb = 1; T.lbomb = 1; tDown(ui.bomb, 1); return; }
+    if (tHitCircle(ui.act, x, y)) { T.ptrs.set(id, { role: 'act' }); T.act = 1; T.lact = 1; tDown(ui.act, 1); return; }
+    if (tHitCircle(ui.pause, x, y, 1.3)) { T.ptrs.set(id, { role: 'pause' }); T.lstart = 1; tDown(ui.pause, 1); return; }
+    if (SET.tpad === 1) {
+      if (tHitRect(ui.td, x, y, 0.18)) { T.ptrs.set(id, { role: 'dpad' }); tpMove(e); }
+      return;
+    }
+    if (x < window.innerWidth * 0.55) {
+      const S = T.stick; S.cx = S.x = x; S.cy = S.y = y; S.on = true; S.dir = -1; T.ptrs.set(id, { role: 'stick' }); tsetDir(-1); tStickDraw();
+    }
+    return;
+  }
+  // menus and other non-gameplay screens
+  if (touchy) {
+    if (tHitCircle(ui.bomb, x, y)) { T.ptrs.set(id, { role: 'bomb' }); T.bomb = 1; T.lbomb = 1; tDown(ui.bomb, 1); return; }
+    if (tHitCircle(ui.act, x, y)) { T.ptrs.set(id, { role: 'act' }); T.act = 1; T.lact = 1; tDown(ui.act, 1); return; }
+    if (T.canFs && tHitCircle(ui.fs, x, y, 1.3)) { T.ptrs.set(id, { role: 'fs' }); tDown(ui.fs, 1); return; }
+    if (tHitRect(ui.td, x, y, 0.15)) { T.ptrs.set(id, { role: 'dpad' }); tpMove(e); return; }
+    if (T.portrait && ui.rot.classList.contains('can') && tHitRect(ui.rot, x, y, 0.02)) { T.rotHide = true; T.key = ''; return; }
+  }
+  const q = toGame(x, y);
+  if (q.inside && !busy()) {
+    for (const row of T.rows) {
+      if (row.scene !== (SCENE && SCENE.name) || q.x < row.x || q.x > row.x + row.w || q.y < row.y || q.y > row.y + row.h) continue;
+      const it = row.m.items[row.i]; if (!it || (it.skip && it.skip())) continue;
+      if (row.m.sel !== row.i) { row.m.sel = row.i; sfx('move'); }
+      T.ptrs.set(id, { role: 'row', row, x0: x, y0: y, gx: q.x }); return;
+    }
+  }
+}
+function tpMove(e) {
+  const T = TOUCH, p = T.ptrs.get(e.pointerId); if (!p) return;
+  const x = e.clientX, y = e.clientY;
+  if (p.role === 'stick') {
+    const S = T.stick, R0 = T.R; let dx = x - S.cx, dy = y - S.cy, d = Math.hypot(dx, dy);
+    if (d > R0 * 1.5) { const k = (d - R0 * 1.5) / d; S.cx += dx * k; S.cy += dy * k; dx = x - S.cx; dy = y - S.cy; d = Math.hypot(dx, dy); }   // the base follows the thumb
+    const kd = d > R0 ? R0 / d : 1; S.x = S.cx + dx * kd; S.y = S.cy + dy * kd;
+    S.dir = tdir(dx, dy, R0 * 0.3, S.dir); tsetDir(S.dir); tStickDraw();
+  } else if (p.role === 'dpad') {
+    const r = T.ui.td.getBoundingClientRect(); T.dpDir = tdir(x - (r.left + r.width / 2), y - (r.top + r.height / 2), r.width * 0.11, T.dpDir); tsetDir(T.dpDir);
+  }
+}
+function tpUp(e) {
+  const T = TOUCH, p = T.ptrs.get(e.pointerId); if (!p) return;
+  T.ptrs.delete(e.pointerId);
+  if (p.role === 'bomb') { T.bomb = 0; tDown(T.ui.bomb, 0); }
+  else if (p.role === 'act') { T.act = 0; tDown(T.ui.act, 0); }
+  else if (p.role === 'pause') tDown(T.ui.pause, 0);
+  else if (p.role === 'fs') { tDown(T.ui.fs, 0); toggleFullscreen(); }
+  else if (p.role === 'stick') { T.stick.on = false; T.stick.dir = -1; tsetDir(-1); tStickDraw(); }
+  else if (p.role === 'dpad') { T.dpDir = -1; tsetDir(-1); }
+  else if (p.role === 'row') { if (e.type === 'pointerup' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 16) tapRow(p.row, p.gx); }
+}
+
+// ---------------- DOM sync (called once per rendered frame) ----------------
+function tStickDraw() {
+  const T = TOUCH, ui = T.ui; if (!ui) return; const S = T.stick;
+  if (S.on) { ui.base.classList.remove('idle'); ui.knob.classList.remove('idle'); ui.base.style.left = S.cx + 'px'; ui.base.style.top = S.cy + 'px'; ui.knob.style.left = S.x + 'px'; ui.knob.style.top = S.y + 'px'; }
+  else { ui.base.classList.add('idle'); ui.knob.classList.add('idle'); ui.base.style.left = ui.knob.style.left = T.idleX + 'px'; ui.base.style.top = ui.knob.style.top = T.idleY + 'px'; }
+}
+function touchSync() {
+  const T = TOUCH, ui = T.ui; if (!ui) return;
+  const show = T.on, ctx = show ? touchCtx() : 'off', kb = show && TEXTIN.active;
+  const key = [show, ctx, kb, SET.tpad, T.portrait, SET.tsize, T.rotHide].join('|');
+  if (key !== T.key) {
+    if (ctx !== T.ctx) touchRelease();
+    T.key = key; T.ctx = ctx; const c = ui.root.classList;
+    document.body.classList.toggle('tt', show);
+    c.toggle('show', show); c.toggle('play', ctx === 'play'); c.toggle('menu', ctx === 'menu'); c.toggle('kb', kb);
+    c.toggle('stick', SET.tpad !== 1); c.toggle('dpad', SET.tpad === 1); c.toggle('port', T.portrait);
+    ui.bombL.textContent = ctx === 'play' ? 'BOMB' : 'OK'; ui.actL.textContent = ctx === 'play' ? 'ACT' : 'BACK';
+    ui.rot.classList.toggle('can', !T.rotHide);
+    tStickDraw();
+  }
+  if (show) {
+    const k = (T.u ? 'u' : '') + (T.d ? 'd' : '') + (T.l ? 'l' : '') + (T.r ? 'r' : '');
+    if (k !== T.dk) { T.dk = k; ui.dU.classList.toggle('on', !!T.u); ui.dD.classList.toggle('on', !!T.d); ui.dL.classList.toggle('on', !!T.l); ui.dR.classList.toggle('on', !!T.r); }
+  }
+}
+function touchResize() {
+  const T = TOUCH, ui = T.ui; if (!ui) return;
+  const vw = window.innerWidth, vh = window.innerHeight; T.portrait = vh > vw * 1.15;
+  document.body.classList.toggle('tport', T.avail && T.portrait);
+  T.tscale = [0.85, 1, 1.2][SET.tsize] || 1;
+  ui.root.style.setProperty('--ts', T.tscale);
+  T.R = clamp(Math.min(vw, vh) * 0.085, 38, 62) * T.tscale; ui.root.style.setProperty('--R', T.R + 'px');
+  const bm = T.portrait ? Math.max(22, vh * 0.045) : 16;
+  T.idleX = Math.max(vw * 0.2, T.R * 1.7 + 12); T.idleY = vh - bm - T.R * 1.25;
+  const r = disp.getBoundingClientRect();
+  if (T.portrait) { ui.root.style.setProperty('--ptop', (r.bottom + 10) + 'px'); ui.rot.style.top = (r.bottom + 10 + 62) + 'px'; }
+  else { ui.root.style.removeProperty('--ptop'); }
+  T.key = ''; tStickDraw();
+}
+// called at the end of every rendered frame
+function touchDraw() {
+  const T = TOUCH; T.rows = T.rowsNext; T.rowsNext = [];
+  touchSync();
+  if (TEXTIN.active && T.on) tkbDraw();
+}
+
+// ---------------- setup ----------------
+(function touchInit() {
+  const T = TOUCH;
+  T.avail = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0 || !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+  if (T.avail && !SET.tscaled) SET.scaling = 1;      // phones: fill the screen instead of integer-only scaling (changing it in OPTIONS is remembered)
+  T.canFs = !!document.documentElement.requestFullscreen && !/iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  const root = tEl('tui'); if (!root) return;
+  T.ui = { root, base: tEl('ts-base'), knob: tEl('ts-knob'), td: tEl('td'), dU: root.querySelector('#td .u'), dD: root.querySelector('#td .d'), dL: root.querySelector('#td .l'), dR: root.querySelector('#td .r'),
+    bomb: tEl('tb-bomb'), act: tEl('tb-act'), pause: tEl('tb-pause'), fs: tEl('tb-fs'), rot: tEl('trot'), bombL: tEl('tb-bomb').firstChild, actL: tEl('tb-act').firstChild };
+  T.ui.fs.classList.toggle('can', T.canFs);
+  window.addEventListener('pointerdown', tpDown, { passive: false, capture: true });
+  window.addEventListener('pointermove', tpMove, { passive: true });
+  window.addEventListener('pointerup', tpUp, { passive: true });
+  window.addEventListener('pointercancel', tpUp, { passive: true });
+  window.addEventListener('contextmenu', e => { if (T.on || T.avail) e.preventDefault(); });
+  document.addEventListener('touchmove', e => { if (T.on) e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  window.addEventListener('blur', () => touchRelease());
+  document.addEventListener('fullscreenchange', () => {
+    try { if (document.fullscreenElement && T.avail && window.screen.orientation && window.screen.orientation.lock) window.screen.orientation.lock('landscape').catch(() => { }); else if (window.screen.orientation && window.screen.orientation.unlock) window.screen.orientation.unlock(); } catch (e) { }
+    setTimeout(resize, 150);
+  });
+})();
 
 
 // ==================== 90_main.js ====================
@@ -4246,6 +4615,7 @@ function simStep(dt) {
 function renderFrame() {
   if (SCENE && SCENE.draw) SCENE.draw();
   drawFade();
+  touchDraw();
   present();
 }
 function guard(fn, arg) {
